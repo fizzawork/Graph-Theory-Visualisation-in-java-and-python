@@ -1,0 +1,275 @@
+########################This is our final updated python code for project submision########################
+###########################################################################################################
+import numpy as np
+import ipywidgets as widgets
+from IPython.display import display, clear_output
+import matplotlib.pyplot as plt
+import networkx as nx
+
+class Graph:
+
+    def __init__(self, graph):
+        self.graph = np.copy(graph)
+
+    def max_flow_edmonds_karp(self, source, sink):
+        N, D = self.graph.shape
+        parent = -np.ones(D, dtype=int)
+
+        while self.BFS(source, sink, parent):
+            min_path_flow = np.inf
+            t = sink  # initialize target as sink
+
+            while t != source:
+                min_path_flow = min(min_path_flow, self.graph[parent[t]][t])
+                t = parent[t]
+
+            v = sink
+            while v != source:
+                u = parent[v]
+                self.graph[u][v] -= min_path_flow
+                self.graph[v][u] += min_path_flow
+                v = parent[v]
+
+        updated_network = self.draw_the_updated_network_flow()
+
+        print('Network of the optimized graph with the max flow:')
+        print(updated_network)  # to view the network in equilibrium (when in is equal to out)
+
+        assert np.sum(updated_network[:, sink]) == np.sum(updated_network[source, :])
+
+        return np.sum(updated_network[:, sink])  # sum of all inputs from the source vertex into the network
+
+    def BFS(self, source, target, parent):
+        visited = [False] * len(self.graph)
+        queue = []
+        queue.append(source)
+        visited[source] = True
+
+        # Standard BFS Loop
+        while len(queue) > 0:
+            u = queue.pop(0)
+
+            for i in range(len(self.graph)):
+                if visited[i] == False and self.graph[u][i] > 0:
+                    queue.append(i)
+                    visited[i] = True
+                    parent[i] = u
+
+        return visited[target]
+    
+    
+    def check_if_bipartite(self, matrix):
+        color_list = [False] * len(matrix)
+        color_list[0] = 1
+        queue = []
+        queue.append(0)
+    
+        while len(queue) > 0:
+            u = queue.pop(0)
+
+            if matrix[u][u] == 1:
+                return False, []
+
+        for v in range(len(matrix)):
+            if matrix[u][v] == 1 and color_list[v] == False:
+                if  color_list[u] == 0:
+                    color_list[v] = 1
+                else:
+                    color_list[v] = 0
+                    queue.append(v)
+
+            elif matrix[u][v] == 1 and color_list[v] == color_list[u]:
+                return False, []
+
+        return True, color_list
+
+
+    def find_maximum_matching(self, adjacency_matrix):
+        G = nx.Graph(adjacency_matrix)
+        matching = nx.max_weight_matching(G)
+        return matching
+    
+    
+    
+    def draw_the_updated_network_flow(self):
+        n, d = self.graph.shape
+        updated_graph = np.zeros([d, n], dtype=float)
+        for i in range(n):
+            for j in range(d):
+                updated_graph[j][i] = self.graph[i][j]
+        return updated_graph
+
+def create_graph(matrix_text):
+    lines = matrix_text.strip().split('\n')
+    graph = [[int(cell) for cell in line.split()] for line in lines]
+    return np.array(graph)
+
+
+#######################GUI#############################
+def create_advanced_gui():
+    source_sink_input = widgets.Text(placeholder='Enter source and sink (e.g., 0, 5)', description='Source, Sink:')
+    graph_input = widgets.Textarea(placeholder='Enter the graph adjacency matrix', description='Graph Matrix:')
+
+    check_bipartite_button = widgets.Button(description='Check Bipartite', layout=widgets.Layout(width='auto'))
+    check_max_flow_button = widgets.Button(description='Check Maximum Flow', layout=widgets.Layout(width='auto'))
+    check_max_match_button = widgets.Button(description='Check Maximum Matching', disabled=True, layout=widgets.Layout(width='auto'))
+    reset_button = widgets.Button(description='Clear', layout=widgets.Layout(width='auto'))
+    
+    graph_info_output = widgets.Output()
+
+    # Add tabs for different functionalities
+    tab_contents = ['Graph Info', 'Bipartite Check', 'Max Flow', 'Max Matching']
+    children = [graph_info_output, widgets.Output(), widgets.Output(), widgets.Output()]
+    tab = widgets.Tab()
+    tab.children = children
+
+    for i, content in enumerate(tab_contents):
+        tab.set_title(i, content)
+
+    # Add colors to buttons
+    check_bipartite_button.style.button_color = 'lightcoral'
+    check_max_flow_button.style.button_color = 'lightblue'
+    check_max_match_button.style.button_color = 'orange'
+    reset_button.style.button_color = 'lightgreen'  
+
+    # Add colors to tabs
+    tab.selected_index = 0  # Select the first tab by default
+    tab.set_title(0, 'Graph Info')
+    tab.set_title(1, 'Bipartite Check')
+    tab.set_title(2, 'Max Flow')
+    tab.set_title(3, 'Max Matching')
+    tab.layout = widgets.Layout(width='auto', height='auto', border='2px solid lightgray')
+
+    # Add colors to the GUI layout
+    gui_layout = widgets.Layout(
+        display='flex',
+        flex_flow='column',
+        align_items='center',
+        width='50%'
+    )
+
+    # Customize colors for different widgets
+    source_sink_input.style.description_width = 'initial'
+    source_sink_input.style.width = '80%'
+    graph_input.style.description_width = 'initial'
+    graph_input.style.width = '80%'
+
+    display(widgets.VBox([source_sink_input, graph_input, check_bipartite_button, check_max_flow_button, check_max_match_button, reset_button, tab]))
+
+    def on_check_bipartite(button):
+        with tab.children[1]:
+            clear_output()
+            graph_matrix_text = graph_input.value
+
+            try:
+                graph = create_graph(graph_matrix_text)
+                #is_bipartite, color_list = check_if_bipartite(graph)
+                
+                g = Graph(graph)
+                is_bipartite, color_list = g.check_if_bipartite(graph)
+
+                
+                if is_bipartite:
+                    print(f'The graph is Bipartite.')
+                    print(f'Bipartite Color List: {color_list}')
+                else:
+                    print(f'The graph is not Bipartite.')
+
+                with graph_info_output:
+                    print(f'Graph Info:')
+                    print(f'Adjacency Matrix:\n{graph}')
+
+                if is_bipartite:
+                    check_max_match_button.disabled = False
+                else:
+                    check_max_match_button.disabled = True
+
+            except Exception as e:
+                print(f"Error: {e}")
+
+    def on_check_max_flow(button):
+        with tab.children[2]:
+            clear_output()
+            source_sink_text = source_sink_input.value
+            graph_matrix_text = graph_input.value
+
+            try:
+                source, sink = map(int, source_sink_text.split(','))
+                graph = create_graph(graph_matrix_text)
+
+                g = Graph(graph)
+                print(f'Max Flow: {g.max_flow_edmonds_karp(source, sink)}')
+                print('Original Graph:')
+                print(graph)
+
+                plt.figure(figsize=(12, 9))
+                g_visual = nx.DiGraph()
+
+                for i in range(len(graph)):
+                    for j in range(len(graph[0])):
+                        if graph[i][j] > 0:
+                            g_visual.add_edge(i, j)
+                            edge_labels = nx.get_edge_attributes(g_visual, 'title')
+
+                pos = nx.spring_layout(g_visual)
+                nx.draw(g_visual, pos, with_labels=True)
+                nx.draw_networkx_edge_labels(g_visual, pos, edge_labels=edge_labels)
+                plt.show()
+
+            except Exception as e:
+                print(f"Error: {e}")
+
+    def on_check_max_match(button):
+        with tab.children[3]:
+            clear_output()
+            graph_matrix_text = graph_input.value
+
+            try:
+                graph = create_graph(graph_matrix_text)
+                g = Graph(graph)
+                matching_edges = g.find_maximum_matching(graph)
+                print(f'Maximum Matching Edges: {matching_edges}')
+
+                plt.figure(figsize=(12, 9))
+                g_visual = nx.Graph()
+
+                for i in range(len(graph)):
+                    for j in range(len(graph[0])):
+                        if graph[i][j] > 0:
+                            g_visual.add_edge(i, j)
+                            edge_labels = nx.get_edge_attributes(g_visual, 'title')
+
+                pos = nx.spring_layout(g_visual)
+                nx.draw(g_visual, pos, with_labels=True)
+                nx.draw_networkx_edges(g_visual, pos=pos, edgelist=matching_edges, edge_color='r', width=2)
+                plt.show()
+
+            except Exception as e:
+                print(f"Error: {e}")
+                
+    def on_reset(button):
+        check_max_match_button.disabled = False
+        source_sink_input.value = ' '
+        graph_input.value = ' '
+        clear_output()
+            
+
+            
+    check_bipartite_button.on_click(on_check_bipartite)
+    check_max_flow_button.on_click(on_check_max_flow)
+    check_max_match_button.on_click(on_check_max_match)
+    reset_button.on_click(on_reset)
+
+# Create Advanced GUI
+create_advanced_gui()
+
+
+# Sample Input:
+# source,sink: 0, 5
+# Graph Matrix:0 16 13 0 0 0 
+#              0 0 10 12 0 0 
+#              0 4 0 0 14 0 
+#              0 0 9 0 0 20 
+#              0 0 0 7 0 4 
+#              0 0 0 0 0 0
+  
