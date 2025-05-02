@@ -15,10 +15,9 @@ Consider a transportation network with multiple sources (e.g., factories) and si
 Solution: Transportation Network Optimisation
 The Max. Flow Methods provide an optimal distribution of goods from sources to sinks, ensuring that the transportation network operates at maximum efficiency.
 
-Methodology:
 
+Methodology:
 Bipartiteness Check
 Enabling the feature to visualise Maximum Bipartite Matching.
 Calculate Maximised Flow of any  weighted graph using Edmond-Karp Algorithm(Python)
 & Ford-Fulkerson Algorithm(Java)
-![image](https://github.com/user-attachments/assets/e28bf08a-028d-4440-8d6e-c6dbc1f2a6be)
